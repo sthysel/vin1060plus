@@ -2,34 +2,34 @@ xinput_name: 10moons-pen
 vendor_id: 0x08f2
 product_id: 0x6811
 pen:
-    max_x: 4096     #moving the tablet pen as far right as possible (use "swap_direction_x:true" to invert if needed)
-    max_y: 4096     #moving the tablet pen as far down as possible (use "swap_direction_y:true" to invert if needed)
+    max_x: 4096 #moving the tablet pen as far right as possible (use "swap_direction_x:true" to invert if needed)
+    max_y: 4096 #moving the tablet pen as far down as possible (use "swap_direction_y:true" to invert if needed)
     resolution_x: 1
     resolution_y: 1
-    max_pressure: 2048   # manual says 8192 but cheap chinese chip reports outputs much less values
-    pressure_min: 300  # when pressing the tablet pen as hard as functionally possible (yours may vary)
-    pressure_contact_threshold: 600    # when making contact with the tablet surface (yours may vary)
+    max_pressure: 2048 # manual says 8192 but cheap chinese chip reports outputs much less values
+    pressure_min: 300 # when pressing the tablet pen as hard as functionally possible (yours may vary)
+    pressure_contact_threshold: 600 # when making contact with the tablet surface (yours may vary)
 actions:
     pen_touch: BTN_LEFT #BTN_TOUCH
     pen: BTN_TOOL_PEN
     pen_buttons:
-    #for Buttons :: python -c "from evdev import ecodes; print([x for x in dir(ecodes) if 'BTN_' in x])"
-        - BTN_STYLUS                    #1st button closest to tip
-        - BTN_STYLUS2                   #2nd button
-    tablet_buttons: 
-    #for Keys :: python -c "from evdev import ecodes; print([x for x in dir(ecodes) if 'KEY_' in x])"
-        - KEY_E                         #labelled 'E'
-        - KEY_B                         #labelled 'B'
-        - KEY_LEFTCTRL+KEY_KPPLUS       #labelled 'CTRL -'
-        - KEY_LEFTCTRL+KEY_KPMINUS      #labelled 'CTRL +'
-        - KEY_LEFTBRACE                 #labelled '['
-        - KEY_RIGHTBRACE                #labelled ']'
-        - KEY_SCROLLUP                  #labelled 'Mouse Icon arrow UP'
-        - KEY_TAB                       #labelled 'TAB'
-        - KEY_SCROLLDOWN                #labelled 'Mouse Icon arrow DOWN'
-        - KEY_SPACE                     #labelled 'SPACE'
-        - KEY_LEFTCTRL                  #labelled 'CTRL'
-        - KEY_LEFTALT                   #labelled 'ALT'
+        #for Buttons :: python -c "from evdev import ecodes; print([x for x in dir(ecodes) if 'BTN_' in x])"
+        - BTN_STYLUS #1st button closest to tip
+        - BTN_STYLUS2 #2nd button
+    tablet_buttons:
+        #for Keys :: python -c "from evdev import ecodes; print([x for x in dir(ecodes) if 'KEY_' in x])"
+        - KEY_E #labelled 'E'
+        - KEY_B #labelled 'B'
+        - KEY_LEFTCTRL+KEY_KPPLUS #labelled 'CTRL -'
+        - KEY_LEFTCTRL+KEY_KPMINUS #labelled 'CTRL +'
+        - KEY_LEFTBRACE #labelled '['
+        - KEY_RIGHTBRACE #labelled ']'
+        - KEY_SCROLLUP #labelled 'Mouse Icon arrow UP'
+        - KEY_TAB #labelled 'TAB'
+        - KEY_SCROLLDOWN #labelled 'Mouse Icon arrow DOWN'
+        - KEY_SPACE #labelled 'SPACE'
+        - KEY_LEFTCTRL #labelled 'CTRL'
+        - KEY_LEFTALT #labelled 'ALT'
 settings:
     swap_axis: false
     swap_direction_x: false
