@@ -61,7 +61,7 @@ actions:
         # Action when stylus doesn't touch tablet (will be written with 0)
         up: BTN_MOUSE
 
-    # Buttons on stylus in <button code> - <action name format>
+    # Buttons on stylus in <button code> - <action name> format
     pen_buttons:
         # See "Pen button: ..." in debug mode to view codes of pressed buttons
         # To get available action, type command below in terminal
@@ -73,7 +73,7 @@ actions:
         # 2nd button
         6: BTN_STYLUS2
 
-    # Buttons on tablet itself in <key code> - <action name format>
+    # Buttons on tablet itself in <key code> - <action name> format
     tablet_buttons:
         # See "Tablet key: ..." in debug mode to view codes of pressed keys
         # To get available actions, type command below in terminal
