@@ -37,24 +37,14 @@ The person to discover this "hack" was Mr.Digimend himself and thanks to the [Yo
 
 > ⚠️ **You need to connect your tablet and run the driver prior to launching a drawing software otherwise the device will not be recognized by it**
 
-1. Clone this repo recursively
+1. Clone this repo
 
   ```shell
-  git clone --recursive https://github.com/F33RNI/10moons-driver-vin1060plus.git
-  cd https://github.com/F33RNI/10moons-driver-vin1060plus
+  git clone https://github.com/F33RNI/10moons-driver-vin1060plus.git
+  cd 10moons-driver-vin1060plus
   ```
 
-2. Build 10moons-tools
-
-  ```shell
-  cd 10moons-tools
-  autoreconf -i -f
-  ./configure
-  make
-  cd ..
-  ```
-
-3. Create python's virtual environment and install requirements
+2. Create python's virtual environment and install requirements
 
   > NOTE: Tested on Python 3.12.7
 
@@ -64,27 +54,9 @@ The person to discover this "hack" was Mr.Digimend himself and thanks to the [Yo
   pip install -r requirements.txt
   ```
 
-4. Connect tablet and wait a bit
+3. Connect tablet and wait a bit
 
-5. Find bus and device IDs
-
-  ```shell
-  lsusb | grep "08f2:6811"
-  ```
-
-6. Run 10moons-probe
-
-  ```shell
-  sudo 10moons-tools/10moons-probe <Bus ID> <Device ID>
-  ```
-
-  Or you can inline with `lsusb` like so
-
-  ```shell
-  sudo 10moons-tools/10moons-probe `lsusb | grep "08f2:6811" | awk '{print $2}' | sed 's/^0*//'` `lsusb | grep "08f2:6811" | awk '{print $4}' | tr -d ':' | sed 's/^0*//'`
-  ```
-
-7. Start driver in debug mode
+4. Start driver in debug mode
 
   ```shell
   sudo venv/bin/python driver-vin1060plus.py -d
@@ -92,7 +64,7 @@ The person to discover this "hack" was Mr.Digimend himself and thanks to the [Yo
 
   > NOTE: You can provide path to config file with `-c [CONFIG]` argument. Also you can enable debug mode in config file
 
-8. Calibrate pressure
+5. Calibrate pressure
 
 * Hover pen over tablet without touching it and write down `[RAW] Pressure: <-` value
 * Now, touch tablet as hard as you can and write down `[RAW] Pressure:` value again
@@ -103,7 +75,7 @@ The person to discover this "hack" was Mr.Digimend himself and thanks to the [Yo
 * Stop driver by pressing `CTRL` + `C`
 * Edit `pressure_threshold_press` and `pressure_threshold_release` in config file if needed
 
-9. Start driver in normal mode
+6. Start driver in normal mode
 
   ```shell
   sudo venv/bin/python driver-vin1060plus.py
@@ -209,8 +181,6 @@ actions:
 * Allow the Graphics App (e.g. Gimp, Scribus, Pix, Inkscape etc. ) to make use of the "pressure sensitivity" measurement
 
 * Use its linear Z-axis "pressure sensitivity" measurements and map it to a non-linear function (maybe bezzier-curve) that simulates more natural pen strokes
-
-* Is there a way with [pyUSB transfer bytecode]() to the VINSA1060plus T501 microcontroller that can enable one to skip the `./10moons-probe` code execution ?!?!
 
 # Useful references
 
