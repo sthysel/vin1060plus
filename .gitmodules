@@ -1,0 +1,3 @@
+[submodule "10moons-tools"]
+	path = 10moons-tools
+	url = https://github.com/DIGImend/10moons-tools
