@@ -21,6 +21,7 @@ pen:
     swap_axes: false
 
     # Invert directions. Use debug mode to see how this works
+    # NOTE: axes will be inverted AFTER min-max check by subtracting value from max
     invert_x: false
     invert_y: false
 

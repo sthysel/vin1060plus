@@ -390,6 +390,12 @@ def main() -> None:
                 logging.debug("Position is outside allowed range. Ignoring")
                 continue
 
+            # Invert axes
+            if invert_x:
+                x = max_x - x
+            if invert_y:
+                y = max_y - y
+
             # Calculate and clamp pressure
             pressure = pressure_raw - pressure_in_min
             pressure *= pressure_out_max - pressure_out_min
