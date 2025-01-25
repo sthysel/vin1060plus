@@ -56,7 +56,7 @@ pip install -r requirements.txt
 ### 4. Start driver in debug mode
 
 ```shell
-sudo venv/bin/python driver-vin1060plus.py -d
+sudo venv/bin/python driver.py -d
 ```
 
 ### 5. Calibrate pressure
@@ -73,7 +73,7 @@ sudo venv/bin/python driver-vin1060plus.py -d
 ### 6. Start driver in normal mode
 
 ```shell
-sudo venv/bin/python driver-vin1060plus.py
+sudo venv/bin/python driver.py
 ```
 
 > **NOTE:** You can provide path to config file with `-c [CONFIG]` argument
