@@ -1,6 +1,6 @@
 # 10moons-driver-vin1060plus
 
-![Aliexpress Graphics Tablet VINSA 1060plus](http://eng.10moons.com/upload/2018/06/11/201806112311552.jpg)
+![Aliexpress Graphics Tablet VINSA 1060plus](.assets/tablet_photo.jpeg)
 
 [10moons Graphics Tablet product homepage](http://eng.10moons.com/info5494.html)
 
