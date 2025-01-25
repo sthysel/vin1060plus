@@ -4,7 +4,7 @@
 
 [10moons Graphics Tablet product homepage](http://eng.10moons.com/info5494.html)
 
-[Aliexpress equivalent sold under VINSA brand. --- Download User Manual](http://blog.ping-it.cn/h/8/sms.pdf)
+[Aliexpress equivalent sold under VINSA brand. --- Download User Manual](https://web.archive.org/web/20240609200158/http://blog.ping-it.cn/h/8/sms.pdf)
 
 This is a Simple driver with pyUSB code modified to handle the interaction events of the VINSA 1060Plus graphics tablet, that includes a passive two button pen.
 
