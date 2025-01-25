@@ -35,7 +35,7 @@ from evdev import AbsInfo, UInput, ecodes
 __version__ = "2.0.dev0"
 
 CONFIG_DEFAULT_PATH = "config-vin1060plus.yaml"
-LOGGING_FMT = "[%(asctime)s] [%(levelname).1s] [%(lineno)4s] %(message)s"
+LOGGING_FMT = "[%(asctime)s] [%(levelname).1s] [%(lineno)3s] %(message)s"
 LOGGING_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 
