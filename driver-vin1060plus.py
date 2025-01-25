@@ -86,12 +86,15 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _prepare_device(vendor_id: int, product_id: int) -> tuple[usb.core.Device, usb.core.Endpoint]:
+def _prepare_device(
+    vendor_id: int, product_id: int, reports: list[dict[str | int, list[int]]]
+) -> tuple[usb.core.Device, usb.core.Endpoint]:
     """Finds and resets USB device
 
     Args:
         vendor_id (int): tablet's usb vendor ID (from lsusb)
         product_id (int): tablet's usb product ID (from lsusb)
+        reports (list[dict[str | int, list[int]]]): array of SET_REPORTs from config
 
     Raises:
         Exception: in case of error (eg. insufficient permissions)
@@ -141,11 +144,13 @@ def _prepare_device(vendor_id: int, product_id: int) -> tuple[usb.core.Device, u
     # Send specific reports
     # From 10moons-tools: <https://github.com/DIGImend/10moons-tools>
     logging.info("Sending reports")
-    _set_report(0x0308, [0x08, 0x04, 0x1D, 0x01, 0xFF, 0xFF, 0x06, 0x2E])
-    _set_report(0x0308, [0x08, 0x03, 0x00, 0xFF, 0xF0, 0x00, 0xFF, 0xF0])
-    _set_report(0x0308, [0x08, 0x06, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00])
-    _set_report(0x0308, [0x08, 0x03, 0x00, 0xFF, 0xF0, 0x00, 0xFF, 0xF0])
+    for report in reports:
+        for w_value, report_data in report.items():
+            if isinstance(w_value, str):
+                w_value = int(w_value)
+            _set_report(w_value, report_data)
 
+    # Find endpoint
     endpoint = dev[0].interfaces()[1].endpoints()[0]
     logging.debug(str(endpoint))
 
@@ -295,7 +300,7 @@ def main() -> None:
 
     # Prepare USB device
     try:
-        dev, endpoint = _prepare_device(config["vendor_id"], config["product_id"])
+        dev, endpoint = _prepare_device(config["vendor_id"], config["product_id"], config["reports"])
     except Exception as e:
         logging.error("Error preparing tablet USB device", exc_info=e)
         logging.info("TIP: Make sure that tablet is connect and you running this script as root")
