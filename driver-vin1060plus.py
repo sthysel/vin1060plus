@@ -21,255 +21,435 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import os
-import sys
+import argparse
+import logging
+from array import array
+from typing import Any
 
-# Specification of the device https://python-evdev.readthedocs.io/en/latest/
-from evdev import UInput, ecodes, AbsInfo
-
-# Establish usb communication with device
 import usb
 import yaml
+from evdev import AbsInfo, UInput, ecodes
 
-DEBUG = False  # = True --> Useful when inspecting tablet behaviour and pen interactions
+# NOTE: For evdev docs pls see <https://python-evdev.readthedocs.io/en/latest/>
 
-path = os.path.join(os.path.dirname(__file__), "config-vin1060plus.yaml")
-# Loading tablet configuration
-with open(path, "r") as f:
-    config = yaml.load(f, Loader=yaml.FullLoader)
+__version__ = "2.0.dev0"
+
+CONFIG_DEFAULT_PATH = "config-vin1060plus.yaml"
+LOGGING_FMT = "[%(asctime)s] [%(levelname).1s] [%(lineno)4s] %(message)s"
+LOGGING_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 
-# Get the required ecodes from configuration
-pen_codes = []
-btn_codes = []
-for k, v in config["actions"].items():
-    codes = btn_codes if k == "tablet_buttons" else pen_codes
-    if isinstance(v, list):
-        codes.extend(v)
-    else:
-        codes.append(v)
+def _parse_config(config_path: str) -> dict[str, Any]:
+    """Parses config from YAML file
 
-if DEBUG:
-    print("codes", codes)
-if DEBUG:
-    print("pen_codes", pen_codes)
-if DEBUG:
-    print("btn_codes", btn_codes)
+    Args:
+        config_path (str): path to config file
 
-temp = []
-for c in pen_codes:
-    temp.extend([ecodes.ecodes[x] for x in c.split("+")])
-pen_codes = temp
+    Returns:
+        dict[str, Any]: parsed config as dictionary object
+    """
+    with open(config_path, "r", encoding="utf-8") as file_io:
+        config = yaml.load(file_io, yaml.FullLoader)
+    return config
 
-temp = []
-for c in btn_codes:
-    temp.extend([ecodes.ecodes[x] for x in c.split("+")])
-btn_codes = temp
 
-pen_events = {
-    ecodes.EV_KEY: pen_codes,
-    ecodes.EV_ABS: [
-        # AbsInfo input: value, min, max, fuzz, flat
-        (ecodes.ABS_X, AbsInfo(0, 0, config["pen"]["max_x"], 0, 0, config["pen"]["resolution_x"])),
-        (ecodes.ABS_Y, AbsInfo(0, 0, config["pen"]["max_y"], 0, 0, config["pen"]["resolution_y"])),
-        # dont calculate absolute x-max/x-min or y-max/y-min values when multiple displays used
-        # rather use xrandr and xinput together to configure which display handles the virtual pen ID
-        # eg. xinput map-to-output 17 DisplayPort-1
-        (ecodes.ABS_PRESSURE, AbsInfo(0, 0, config["pen"]["max_pressure"], 0, 0, 1)),
-    ],
-}
+def _parse_args() -> argparse.Namespace:
+    """Parses cli arguments
 
-btn_events = {ecodes.EV_KEY: btn_codes}
-if DEBUG:
-    print("pen_events :: ", pen_events)
-if DEBUG:
-    print("btn_events :: ", btn_events)
+    Returns:
+        argparse.Namespace: parsed arguments
+    """
+    parser = argparse.ArgumentParser(description="10moons T501-T503 driver")
 
-# Find the device
-dev = usb.core.find(idVendor=config["vendor_id"], idProduct=config["product_id"])
-# Select end point for reading second interface [2] for actual data
-# Interface[0] associated Internal USB storage (labelled as CDROM drive)
-# Interface[1] useful to map 'Full Tablet Active Area' -- outputs 64 bytes of xinput events
-# Interface[2] maps to the 'AndroidActive Area' --- outputs 8 bytes of xinput events ( but only before  ./10moons-probe is executed)
-if DEBUG:
-    print(dev)
-if DEBUG:
-    print("--------------------------------")
-ep = dev[0].interfaces()[1].endpoints()[0]
-# Reset the device (don't know why, but till it works don't touch it)
-dev.reset()
+    parser.add_argument(
+        "-c",
+        "--config",
+        type=str,
+        required=False,
+        default=CONFIG_DEFAULT_PATH,
+        help=f"path to config file (Default: {CONFIG_DEFAULT_PATH})",
+    )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        default=False,
+        help="enable debug logs (overrides setting from config file)",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=__version__,
+        help="show program's version number and exit",
+    )
 
-# Drop default kernel driver from all devices
-for j in [0, 1, 2]:
-    if dev.is_kernel_driver_active(j):
-        dev.detach_kernel_driver(j)
+    return parser.parse_args()
 
-# Set new configuration
-dev.set_configuration()
 
-vpen = UInput(events=pen_events, name=config["xinput_name"], version=0x3)
-if DEBUG:
-    print(vpen.capabilities(verbose=True).keys())
-if DEBUG:
-    print(vpen.capabilities(verbose=True))
-vbtn = UInput(events=btn_events, name=config["xinput_name"] + "_buttons", version=0x3)
+def _prepare_device(vendor_id: int, product_id: int) -> tuple[usb.core.Device, usb.core.Endpoint]:
+    """Finds and resets USB device
 
-# compare with xinput list
-if DEBUG:
-    print(vbtn.capabilities(verbose=True).keys())
-if DEBUG:
-    print(vbtn.capabilities(verbose=True))
-if DEBUG:
-    print(vpen)
-if DEBUG:
-    print(vbtn)
+    Args:
+        vendor_id (int): tablet's usb vendor ID (from lsusb)
+        product_id (int): tablet's usb product ID (from lsusb)
 
-pressed = -1
+    Raises:
+        Exception: in case of error (eg. insufficient permissions)
 
-# Direction and axis configuration
-max_x = config["pen"]["max_x"] * config["settings"]["swap_direction_x"]
-max_y = config["pen"]["max_y"] * config["settings"]["swap_direction_y"]
-if config["settings"]["swap_axis"]:
-    y1, y2, x1, x2 = (1, 2, 3, 4)
-else:
-    x1, x2, y1, y2 = (1, 2, 3, 4)
+    Returns:
+        tuple[usb.core.Device, usb.core.Endpoint]: usb device, interface endpoint (interfaces()[1].endpoints()[0])
+    """
+    # Find the device
+    dev = usb.core.find(idVendor=vendor_id, idProduct=product_id)
+    logging.debug(str(dev))
 
-# Pen pressure thresholds:
-pressure_max = config["pen"]["max_pressure"]
-pressure_min = config["pen"]["pressure_min"]
-pressure_contact_threshold = config["pen"]["pressure_contact_threshold"]
-# Unfortunately vin1060plus does not show 8192 pressure resolution.  #TODO: need to review pressure parameters
+    # Check instance type
+    if not isinstance(dev, usb.core.Device):
+        raise Exception("USB device instance is not usb.core.Device type")
 
-pressed_prev = None
-# Infinite loop
-while True:
+    # Select end point for reading second interface [2] for actual data
+    # Interface[0] associated Internal USB storage (labelled as CDROM drive)
+    # Interface[1] useful to map 'Full Tablet Active Area' -- outputs 64 bytes of xinput events
+    # Interface[2] maps to the 'AndroidActive Area' -- outputs 8 bytes of xinput events
+    # (but only before  ./10moons-probe is executed)
+    endpoint = dev[0].interfaces()[1].endpoints()[0]
+    logging.debug(str(endpoint))
+
+    # Reset the device (don't know why, but till it works don't touch it)
+    logging.info("Resetting USB device")
+    dev.reset()
+
+    # Drop default kernel driver from all devices
+    logging.info("Detaching kernel driver from USB device")
+    for iface_id in [0, 1, 2]:
+        if dev.is_kernel_driver_active(iface_id):
+            logging.debug(f"Detaching kernel driver from interface: {iface_id}")
+            dev.detach_kernel_driver(iface_id)
+
+    # Set new configuration
+    logging.info("Setting new configuration to USB device")
+    dev.set_configuration()
+
+    return dev, endpoint
+
+
+def _parse_ecodes(actions: dict[str | int, str], ensure_int: bool = True) -> dict[Any, list[int]]:
+    """Converts string actions into arrays of ecodes
+
+    Args:
+        actions (dict[str  |  int, str]): pen_buttons or tablet_buttons from config
+        ensure_int (bool, optional): always convert keys to integers. Defaults to True
+
+    Returns:
+        dict[str | int, list[int]]: {key code (same from config): [ecode 1, ecode 2, ...]}
+    """
+    ecodes_ = {}
+    for key_code, action in actions.items():
+        if ensure_int and isinstance(key_code, str):
+            key_code = int(key_code)
+        ecodes_[key_code] = [ecodes.ecodes[code_part] for code_part in action.split("+")]
+    return ecodes_
+
+
+def _create_uinputs(
+    xinput_name: str,
+    pen_ecodes: dict[int, list[int]],
+    pen_touch_ecodes: dict[str, list[int]],
+    btn_ecodes: dict[int, list[int]],
+    pen_config: dict[str, int | bool],
+) -> tuple[UInput, UInput]:
+    """Creates virtual input devices for pen and tablet
+
+    Args:
+        xinput_name (str): device name
+        pen_ecodes (dict[int, list[int]]): output of _parse_ecodes()
+        pen_touch_ecodes (dict[str, list[int]]): output of _parse_ecodes()
+        btn_ecodes (dict[int, list[int]]): output of _parse_ecodes()
+
+    Raises:
+        Exception: in case of error (eg. insufficient permissions)
+
+    Returns:
+        tuple[UInput, UInput]: pen, btn
+    """
+    # Parse ecodes
+    pen_codes = []
+    for value in pen_ecodes.values():
+        pen_codes.extend(value)
+    for value in pen_touch_ecodes.values():
+        pen_codes.extend(value)
+    btn_codes = []
+    for value in btn_ecodes.values():
+        btn_codes.extend(value)
+
+    # Build pen events
+    abs_info_x = AbsInfo(
+        0,
+        pen_config.get("min_x", 0),
+        pen_config.get("max_x", 4095),
+        0,
+        0,
+        pen_config.get("resolution_x", 1),
+    )
+    abs_info_y = AbsInfo(
+        0,
+        pen_config.get("min_y", 0),
+        pen_config.get("max_y", 4095),
+        0,
+        0,
+        pen_config.get("resolution_y", 1),
+    )
+    pressure_info = AbsInfo(
+        0,
+        pen_config.get("pressure_out_min", 0),
+        pen_config.get("pressure_out_max", 2047),
+        0,
+        0,
+        pen_config.get("resolution_pressure", 1),
+    )
+    pen_events = {
+        ecodes.EV_KEY: pen_codes,
+        ecodes.EV_ABS: [(ecodes.ABS_X, abs_info_x), (ecodes.ABS_Y, abs_info_y), (ecodes.ABS_PRESSURE, pressure_info)],
+    }
+    logging.debug(f"PEN events: {pen_events}")
+
+    # Build button events
+    btn_events = {ecodes.EV_KEY: btn_codes}
+    logging.debug(f"BTN events: {btn_events}")
+
+    # Create virtual pen
+    logging.info(f"Creating UInput {xinput_name}")
+    virtual_pen = UInput(events=pen_events, name=xinput_name, version=0x3)
+    logging.debug(str(virtual_pen))
+    logging.debug(virtual_pen.capabilities(verbose=True).keys())
+    logging.debug(virtual_pen.capabilities(verbose=True))
+
+    # Create virtual buttons
+    logging.info(f"Creating UInput {xinput_name}_buttons")
+    virtual_btn = UInput(events=btn_events, name=xinput_name + "_buttons", version=0x3)
+    logging.debug(str(virtual_btn))
+    logging.debug(virtual_btn.capabilities(verbose=True).keys())
+    logging.debug(virtual_btn.capabilities(verbose=True))
+
+    return virtual_pen, virtual_btn
+
+
+def _write_ecode(device: UInput, ecodes_: list[int], press: bool = True) -> None:
+    """Writes ecodes to device
+
+    Args:
+        device (UInput): virtual input device
+        ecodes_ (list[int]): list of ecodes
+        press (bool, optional): True to write as 1, False to write as 0. Defaults to True
+    """
+    for ecode_ in ecodes_:
+        logging.debug(f'{"Pressing" if press else "Releasing"} ecode: {ecode_}')
+        device.write(ecodes.EV_KEY, ecode_, 1 if press else 0)
+    device.syn()
+
+
+def main() -> None:
+    """Main entry and main loop"""
+    # Parse CLI arguments and config file
+    args = _parse_args()
+    config = _parse_config(args.config)
+
+    # Setup logging
+    logging.basicConfig(
+        format=LOGGING_FMT,
+        datefmt=LOGGING_DATEFMT,
+        level=logging.DEBUG if args.debug or config.get("debug") else logging.INFO,
+    )
+    logging.info(f"driver-vin1060plus version: {__version__}")
+
+    logging.debug("DEBUG MODE ENABLED")
+    logging.debug(f"Parsed config: {config}")
+
+    # Parse actions
+    actions_conf = config.get("actions", {})
+    pen_ecodes: dict[int, list[int]] = _parse_ecodes(actions_conf.get("pen_buttons", {}))
+    logging.debug(f"Pen ecodes: {pen_ecodes}")
+    btn_ecodes: dict[int, list[int]] = _parse_ecodes(actions_conf.get("tablet_buttons", {}))
+    logging.debug(f"Button ecodes: {btn_ecodes}")
+    pen_touch_ecodes: dict[str, list[int]] = _parse_ecodes(actions_conf.get("pen_touch", {}), ensure_int=False)
+    logging.debug(f"Pen touch ecodes: {pen_touch_ecodes}")
+
+    # Prepare USB device
     try:
-        data = dev.read(ep.bEndpointAddress, ep.wMaxPacketSize)
-        if DEBUG:
-            print(data)  # shows button pressed array
-
-        # When it only works on 3x6" Android Active area
-        # array('B', [5, 128, 161, 13, 2, 9, 0, 0])
-
-        # When it works on full 10x6" full area
-        # (Top-left point, just under VirtualMediaShortcut keys)
-        # array('B', [6, 0, 0, 0, 0, 5, 37, 6, 46, 2, 5, 255, 51, 0, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-        # (bottom-right corner)
-        # array('B', [6, 15, 255, 15, 255, 6, 192, 6, 46, 2, 5, 255, 51, 15, 255, 0, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-
-        if data[5] in [3, 4, 5, 6]:  # [192, 193]: # Pen actions
-            pen_x = abs(max_x - (data[x1] * 255 + data[x2]))
-            pen_y = abs(max_y - (data[y1] * 255 + data[y2]))
-            pen_pressure = pressure_max - (data[5] * 255 + data[6])
-            if DEBUG:
-                print("pen_x , pen_y : ", pen_x, "-", pen_y, " --- pen_pressure :", pen_pressure)
-            if pen_pressure >= pressure_contact_threshold:  # when Pen touches tablet surface detection value
-                if DEBUG:
-                    print("tablet tapped")
-                vpen.write(ecodes.EV_KEY, ecodes.BTN_TOOL_PEN, 1)
-                # vpen.write(ecodes.EV_KEY, ecodes.BTN_TOUCH, 1 ) #ecodes.BTN_TOUCH not executed ever since src code mods from original driver.py
-                vpen.write(
-                    ecodes.EV_KEY, ecodes.BTN_MOUSE, 1
-                )  # ecodes.BTN_MOUSE works, while ecodes.BTN_TOUCH does not execute
-            else:
-                vpen.write(ecodes.EV_KEY, ecodes.BTN_MOUSE, 0)  # BTN_MOUSE up event
-            vpen.syn()
-            vpen.write(ecodes.EV_ABS, ecodes.ABS_X, pen_x)
-            vpen.write(ecodes.EV_ABS, ecodes.ABS_Y, pen_y)
-            vpen.write(ecodes.EV_ABS, ecodes.ABS_PRESSURE, pen_pressure)
-
-        key_pressed = (data[11], data[12])
-        if DEBUG:
-            print("--- key_pressed : ", key_pressed)
-        pressed = None
-
-        if key_pressed == (255, 49):  # 1st button (from top left - labelled "E")
-            pressed = 0
-        if key_pressed == (255, 35):  # 2nd button (labelled "B")
-            pressed = 1
-        if key_pressed == (127, 51):  # 3rd button (labelled "CTRL-")
-            pressed = 2
-        if key_pressed == (255, 50):  # 4th button (labelled "CTRL+")
-            pressed = 3
-        if key_pressed == (191, 51):  # 5th button (labelled "[") #TODO
-            pressed = 4
-        if key_pressed == (255, 19):  # 6th button (labelled "]") #TODO
-            pressed = 5
-        if key_pressed == (223, 51):  # 7th button (labelled "MouseSymbol_arrowUP")
-            pressed = 6
-        if key_pressed == (254, 51):  # 8th button (labelled "TAB")
-            pressed = 7
-        if key_pressed == (239, 51):  # 9th button (labelled "MouseSymbol_arrowDown")
-            pressed = 8
-        if key_pressed == (253, 51):  # 10th button (labelled "SPACE")
-            pressed = 9
-        if key_pressed == (247, 51):  # 11th button (labelled "CTRL")
-            pressed = 10
-        if key_pressed == (251, 51):  # 12th button (labelled "ALT")
-            pressed = 11
-
-        # press types: 0 - up; 1 - down; 2 - hold
-        press_type = 0
-        if key_pressed != (255, 51):  # Key_code tuple when no keys pressed
-            press_type = 1
-            # if pressed_prev == pressed :   #2-hold is not working nicely
-            #    press_type = 2
-            pressed_prev = pressed
-
-        if pressed_prev is not None:
-            if DEBUG:
-                print(
-                    "Key_pressed detected : ",
-                    pressed_prev,
-                    " :: ",
-                    config["actions"]["tablet_buttons"][pressed_prev],
-                    " -- press type ( 0-up, 1-down , 2-hold) :",
-                    press_type,
-                )
-            key_codes = config["actions"]["tablet_buttons"][pressed_prev].split("+")
-            for key in key_codes:
-                act = ecodes.ecodes[key]
-                vbtn.write(ecodes.EV_KEY, act, press_type)
-
-        pen_button = data[9]
-        if DEBUG:
-            print("--- pen_button_pressed : ", pen_button)
-        pen_button_pressed = None
-        if pen_button == 4:  # lower pen button (one closer to pen tip)
-            pen_button_pressed = 0
-        if pen_button == 6:  # upper pen button (one further from pen tip)
-            pen_button_pressed = 1
-
-        # press types: 0 - up; 1 - down; 2 - hold
-        press_type = 0
-        if pen_button != 2:  # Default value when no pen button pressed
-            press_type = 1  # press_type=2 (hold status) is not working nicely, so skip implementation
-
-        if pen_button != 2:  #
-            if DEBUG:
-                print(
-                    "pen_button_pressed detected : ",
-                    pen_button_pressed,
-                    " :: ",
-                    config["actions"]["pen_buttons"][pen_button_pressed],
-                    " -- press type ( 0-up, 1-down , 2-hold) :",
-                    press_type,
-                )
-            key_codes = config["actions"]["tablet_buttons"][pen_button_pressed].split("+")
-            for key in key_codes:
-                act = ecodes.ecodes[key]
-                vbtn.write(ecodes.EV_KEY, act, press_type)
-
-        # Flush
-        vpen.syn()
-        vbtn.syn()
-    except usb.core.USBError as e:
-        if e.args[0] == 19:
-            vpen.close()
-            raise Exception("Device has been disconnected")
-    except KeyboardInterrupt:
-        vpen.close()
-        vbtn.close()
-        sys.exit("\nDriver terminated successfully.")
+        dev, endpoint = _prepare_device(config["vendor_id"], config["product_id"])
     except Exception as e:
-        print(e)
+        logging.error("Error preparing tablet USB device", exc_info=e)
+        logging.info("TIP: Make sure to run this script as root and call 10moons-probe first")
+        return
+
+    pen_config = config.get("pen", {})
+
+    # Create virtual devices
+    try:
+        virtual_pen, virtual_btn = _create_uinputs(
+            config.get("xinput_name", "10moons-pen"), pen_ecodes, pen_touch_ecodes, btn_ecodes, pen_config
+        )
+    except Exception as e:
+        logging.error("Error creating virtual input devices", exc_info=e)
+        logging.info("TIP: Make sure to run this script as root")
+        return
+
+    # Pre-parse from config
+    swap_axes = pen_config.get("swap_axes")
+    invert_x = pen_config.get("invert_x")
+    invert_y = pen_config.get("invert_y")
+    min_x = pen_config.get("min_x", 0)
+    max_x = pen_config.get("max_x", 4095)
+    min_y = pen_config.get("min_y", 0)
+    max_y = pen_config.get("max_y", 4095)
+    pressure_in_min = pen_config.get("pressure_in_min", 2047)
+    pressure_in_max = pen_config.get("pressure_in_max", 0)
+    pressure_out_min = pen_config.get("pressure_out_min", 0)
+    pressure_out_max = pen_config.get("pressure_out_max", 2047)
+    pressure_threshold_press = pen_config.get("pressure_threshold_press", 300)
+    pressure_threshold_release = pen_config.get("pressure_threshold_release", 200)
+
+    # Loop variables
+    touch = False
+    btn_pen_key_last = None
+    btn_tablet_key_last = None
+
+    # Main loop
+    logging.info("Entering main loop. Press CTRL+C to stop driver and exit")
+    while True:
+        try:
+            # Read data from tablet
+            data = dev.read(endpoint.bEndpointAddress, endpoint.wMaxPacketSize)  # pyright: ignore
+            logging.debug(f"[RAW] USB data: {data}")
+
+            # Check type (just in case)
+            if not isinstance(data, array):
+                raise Exception("USB data type is not array.array")
+
+            # Parse tablet key
+            # TODO: Properly understand tablet key, because it's obviously not a big int type
+            key_raw = int.from_bytes(data[11:13], byteorder="big")
+            logging.debug(f"[RAW] Tablet key: {key_raw}")
+
+            # Tablet key released
+            if btn_tablet_key_last is not None and key_raw != btn_tablet_key_last:
+                logging.debug(f"Tablet key {btn_tablet_key_last} released")
+                _write_ecode(virtual_btn, btn_ecodes.get(btn_tablet_key_last, []), press=False)
+                btn_tablet_key_last = None
+
+            # Tablet key pressed
+            if key_raw in btn_ecodes:
+                logging.debug(f"Tablet key {key_raw} pressed")
+                _write_ecode(virtual_btn, btn_ecodes.get(key_raw, []))
+                btn_tablet_key_last = key_raw
+
+            # Parse action
+            pen_action = data[5]
+            logging.debug(f"[RAW] pen action: {pen_action}")
+            if pen_action not in [3, 4, 5, 6]:
+                logging.debug("Ignoring this pen action")
+                continue
+
+            # Parse raw position and pressure
+            x = int.from_bytes(data[3:5] if swap_axes else data[1:3], byteorder="big")
+            y = int.from_bytes(data[1:3] if swap_axes else data[3:5], byteorder="big")
+            pressure_raw = int.from_bytes(data[5:7], byteorder="big")
+            logging.debug(f"[RAW] X: {x}, Y: {y}, swapped: {'true' if swap_axes else 'false'}")
+            logging.debug(f"[RAW] Pressure: {pressure_raw}")
+
+            # Parse pen button
+            pen_btn_raw = data[9]
+            logging.debug(f"[RAW] Pen button: {pen_btn_raw}")
+
+            # Check position
+            if x <= min_x or x >= max_x or y <= min_y or y >= max_y:
+                logging.debug("Position is outside allowed range. Ignoring")
+                continue
+
+            # Calculate and clamp pressure
+            pressure = pressure_raw - pressure_in_min
+            pressure *= pressure_out_max - pressure_out_min
+            pressure /= pressure_in_max - pressure_in_min
+            pressure += pressure_out_min
+            pressure = int(max(pressure_out_min, min(pressure, pressure_out_max)))
+
+            # Check thresholds
+            if not touch and pressure > pressure_threshold_press:
+                touch = True
+            elif touch and pressure < pressure_threshold_release:
+                touch = False
+
+            logging.debug(f"[OUT] X: {x}, Y: {y}, pressure: {pressure}, touch: {touch}")
+
+            # Write touch
+            for ecode_ in pen_touch_ecodes.get("down" if touch else "up", []):
+                virtual_pen.write(ecodes.EV_KEY, ecode_, 1 if touch else 0)
+            virtual_pen.syn()
+
+            # Write position and pressure
+            virtual_pen.write(ecodes.EV_ABS, ecodes.ABS_X, x)
+            virtual_pen.write(ecodes.EV_ABS, ecodes.ABS_Y, y)
+            virtual_pen.write(ecodes.EV_ABS, ecodes.ABS_PRESSURE, pressure)
+            virtual_pen.syn()
+
+            # Pen button released
+            if btn_pen_key_last is not None and pen_btn_raw != btn_pen_key_last:
+                logging.debug("Pen button released")
+                _write_ecode(virtual_pen, pen_ecodes.get(btn_pen_key_last, []), press=False)
+                btn_pen_key_last = None
+
+            # Pen button pressed
+            if btn_pen_key_last is None and pen_btn_raw in pen_ecodes:
+                logging.debug("Pen button pressed")
+                _write_ecode(virtual_pen, pen_ecodes.get(pen_btn_raw, []))
+                btn_pen_key_last = pen_btn_raw
+
+        # USB error
+        except usb.core.USBError as e:
+            # Just timed out. Ignoring it
+            if e.args[0] == 110:
+                continue
+
+            # Disconnected or other error
+            if e.args[0] == 19:
+                logging.warning("Device disconnected")
+            else:
+                logging.warning(f"USB error: {e}")
+            break
+
+        # CTRL+C
+        except (SystemExit, KeyboardInterrupt):
+            logging.warning("Exiting ...")
+            break
+
+        # Some other error
+        except Exception as e:
+            logging.error(f"Unknown error: {e}", exc_info=e)
+            break
+
+    # Release pen and tablet keys
+    try:
+        if touch:
+            for ecode_ in pen_touch_ecodes.get("up", []):
+                virtual_pen.write(ecodes.EV_KEY, ecode_, 0)
+            virtual_pen.syn()
+        if btn_pen_key_last is not None:
+            _write_ecode(virtual_pen, btn_ecodes.get(btn_pen_key_last, []), press=False)
+        if btn_tablet_key_last is not None:
+            _write_ecode(virtual_btn, btn_ecodes.get(btn_tablet_key_last, []), press=False)
+    except Exception as e:
+        logging.warning(f"Unable to release pen and tablet keys: {e}")
+
+    # Close devices on exit
+    logging.info("Closing virtual input devices")
+    try:
+        virtual_pen.close()
+        virtual_btn.close()
+    except Exception as e:
+        logging.warning(f"Unable to close virtual input devices: {e}")
+
+    logging.info("Exited!")
+
+
+if __name__ == "__main__":
+    main()
