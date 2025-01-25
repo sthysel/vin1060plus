@@ -16,6 +16,8 @@ This repository is a driver that provides basic functionality for VINSA 1060plus
 
 > May also work with other similar models, but not tested yet
 > *(for other models you can try modifying config file and make a contribution)*
+>
+> Tested on 10moons G10 v2.0 (*product code:* `6970607220191`, *detected by* `lsusb` *as:* `08f2:6811`)
 
 ### ✨ Features
 
