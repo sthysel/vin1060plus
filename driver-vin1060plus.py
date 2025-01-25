@@ -111,9 +111,6 @@ def _prepare_device(vendor_id: int, product_id: int) -> tuple[usb.core.Device, u
     # Interface[0] associated Internal USB storage (labelled as CDROM drive)
     # Interface[1] useful to map 'Full Tablet Active Area' -- outputs 64 bytes of xinput events
     # Interface[2] maps to the 'AndroidActive Area' -- outputs 8 bytes of xinput events
-    # (but only before  ./10moons-probe is executed)
-    endpoint = dev[0].interfaces()[1].endpoints()[0]
-    logging.debug(str(endpoint))
 
     # Reset the device (don't know why, but till it works don't touch it)
     logging.info("Resetting USB device")
@@ -129,6 +126,28 @@ def _prepare_device(vendor_id: int, product_id: int) -> tuple[usb.core.Device, u
     # Set new configuration
     logging.info("Setting new configuration to USB device")
     dev.set_configuration()
+
+    # Claim interface
+    # Like in 10moons-tools: <https://github.com/DIGImend/10moons-tools>
+    interface = 2
+    logging.info(f"Claiming USB interface {interface}")
+    usb.util.claim_interface(dev, interface)
+
+    def _set_report(w_value, report_data) -> None:
+        # Host to device, Class, Interface; SET_REPORT
+        logging.debug(f"Sending SET_REPORT: {w_value}, {report_data}")
+        dev.ctrl_transfer(0x21, 9, w_value, interface, report_data, timeout=250)
+
+    # Send specific reports
+    # From 10moons-tools: <https://github.com/DIGImend/10moons-tools>
+    logging.info("Sending reports")
+    _set_report(0x0308, [0x08, 0x04, 0x1D, 0x01, 0xFF, 0xFF, 0x06, 0x2E])
+    _set_report(0x0308, [0x08, 0x03, 0x00, 0xFF, 0xF0, 0x00, 0xFF, 0xF0])
+    _set_report(0x0308, [0x08, 0x06, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00])
+    _set_report(0x0308, [0x08, 0x03, 0x00, 0xFF, 0xF0, 0x00, 0xFF, 0xF0])
+
+    endpoint = dev[0].interfaces()[1].endpoints()[0]
+    logging.debug(str(endpoint))
 
     return dev, endpoint
 
@@ -279,7 +298,7 @@ def main() -> None:
         dev, endpoint = _prepare_device(config["vendor_id"], config["product_id"])
     except Exception as e:
         logging.error("Error preparing tablet USB device", exc_info=e)
-        logging.info("TIP: Make sure to run this script as root and call 10moons-probe first")
+        logging.info("TIP: Make sure that tablet is connect and you running this script as root")
         return
 
     pen_config = config.get("pen", {})
