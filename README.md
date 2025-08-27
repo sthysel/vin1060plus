@@ -199,33 +199,26 @@ The person to discover this "hack" was Mr.Digimend himself and thanks to the
 when in Android-Active-Area Mode (8 byte TX) vs the required
 Full-Tablet-Active-Area mode (64 byte TX).
 
-At current state of repo, Fern Lane has refactored the code. She fixed the
-pressure calculation, moved most of the parameters to a configuration file,
-making it more universal (with the ability to use it on other similar models),
-added logs and cli args, made the usage more intuitive, and removed the need for
-`10moons-tools`.
+Fern Lane fixed the pressure calculation, she moved most of the parameters to a
+configuration file, making it more universal (with the ability to use it on
+other similar models), added logs and cli args, made the usage more intuitive,
+and removed the need for `10moons-tools`.
+
+sthysel refactored unto `uv` as package manager, packaged the code and added a
+entry point, replaced the argparse cli with a click based cli, and replaced
+logging with loguru logging. Cosmetic and UX changes, nothing more.
 
 ## 🌐 Credits
 
-> Some parts of code are taken from:
-  <https://github.com/Mantaseus/Huion_Kamvas_Linux>
->
-> Other parts taken from:
-  <https://github.com/alex-s-v/10moons-driver>
->
-> All inspiration tricks and tactics taken from :
-  <https://github.com/DIGImend/10moons-tools>
->
-> Together with howto videos from DigiMend :
-  <https://www.youtube.com/watch?v=WmnSwjlpRBE>
->
-> DigiMend conference talk on interfacing grahics tablets in Linux:
-  <https://www.youtube.com/watch?v=Qi73_QFSlpo>
->
-> The forum that got started with finding a simple solution to cheap graphics tablet purchase:
->
-> "Please Add support for 10moons 10*6 inch Graphics Tablet #182"
-  <https://github.com/DIGImend/digimend-kernel-drivers/issues/182>
+Some parts of code are taken from: <https://github.com/Mantaseus/Huion_Kamvas_Linux>
+Other parts taken from: <https://github.com/alex-s-v/10moons-driver>
+
+All inspiration tricks and tactics taken from  <https://github.com/DIGImend/10moons-tools>
+Together with howto videos from DigiMend: <https://www.youtube.com/watch?v=WmnSwjlpRBE>
+DigiMend conference talk on interfacing grahics tablets in Linux: <https://www.youtube.com/watch?v=Qi73_QFSlpo>
+The forum that got started with finding a simple solution to cheap graphics
+tablet purchase: "Please Add support for 10moons 10*6 inch Graphics Tablet #182"
+<https://github.com/DIGImend/digimend-kernel-drivers/issues/182>
 
 ## 📑 TODOS
 
