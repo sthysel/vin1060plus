@@ -40,7 +40,7 @@ Tested on 10moons G10 v2.0 (*product code:* `6970607220191`, *detected by*
 ⚠️ **You need to connect your tablet and run the driver prior to launching a
 drawing tool otherwise the device will not be recognised by it**
 
-## Install og github directly
+## Install from github directly
 
 Use this if you just want to use the tool.
 
