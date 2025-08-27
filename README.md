@@ -88,7 +88,7 @@ uv sync
 
 ## Start driver in normal mode
 
-`vin1060-driver -d`
+`vin1060-driver`
 
 You can provide path to config file with `-c [CONFIG]` argument
 You can enable debug mode in config file itself
