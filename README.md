@@ -1,27 +1,31 @@
-# 10moons-driver-vin1060plus
+# vin1060plus driver
 
-![Aliexpress Graphics Tablet VINSA 1060plus](.assets/tablet_photo.jpeg)
+![Aliexpress Graphics Tablet VINSA 1060plus](docs/tablet_photo.jpeg)
 
 [10moons Graphics Tablet product homepage](http://eng.10moons.com/info5494.html)
 
 [Aliexpress equivalent sold under VINSA brand. --- Download User Manual](https://web.archive.org/web/20240609200158/http://blog.ping-it.cn/h/8/sms.pdf)
 
-This is a Simple driver with pyUSB code modified to handle the interaction events of the VINSA 1060Plus graphics tablet, that includes a passive two button pen.
+This is a Simple driver with pyUSB code modified to handle the interaction
+events of the VINSA 1060Plus graphics tablet, that includes a passive two button
+pen.
 
-Linux detects it as a T501 GoTOP tablet, hence pyUSB library is able to interface with the tablet device.
+Linux detects it as a T501 GoTOP tablet, hence pyUSB library is able to
+interface with the tablet device.
 
-## ❓ About
+# ❓ About
 
 This repository is a driver that provides basic functionality for VINSA 1060plus T501 tablet
 
-> May also work with other similar models, but not tested yet
-> *(for other models you can try modifying config file and make a contribution)*
->
-> Tested on 10moons G10 v2.0 (*product code:* `6970607220191`, *detected by* `lsusb` *as:* `08f2:6811`)
+```
+May also work with other similar models, but not tested yet
+*(for other models you can try modifying config file and make a contribution)*
 
-### ✨ Features
+Tested on 10moons G10 v2.0 (*product code:* `6970607220191`, *detected by* `lsusb` *as:* `08f2:6811`)
+```
 
-- No `10moons-tools` needed
+# ✨ Features
+
 - X / Y positioning with limiting
 - Pressure sensitivity and calibration (**no linearity correction yet**)
 - Configurable touch thresholds
@@ -30,36 +34,28 @@ This repository is a driver that provides basic functionality for VINSA 1060plus
   - Pen (stylus) buttons
   - 12 buttons on the tablet itself
 
-## 🏗️ How to install and use
+# 🏗️ How to install and use
 
-> ⚠️ **You need to connect your tablet and run the driver prior to launching a drawing software otherwise the device will not be recognized by it**
-
-### 1. Clone this repo
-
-```shell
-git clone https://github.com/F33RNI/10moons-driver-vin1060plus.git
-cd 10moons-driver-vin1060plus
+```
+⚠️ **You need to connect your tablet and run the driver prior to launching a drawing software otherwise the device will not be recognized by it**
 ```
 
-### 2. Create python's virtual environment and install requirements
-
-> **NOTE:** Tested on Python `3.12.7`
+## Clone this repo
 
 ```shell
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+git clone https://github.com/sthysel/vin1060plus.git
+cd vin1060plus
+uv sync
 ```
+## Connect your tablet and wait a little while until it is detected by the system
 
-### 3. Connect your tablet and wait a little while until it is detected by the system
-
-### 4. Start driver in debug mode
+## Start driver in debug mode
 
 ```shell
 sudo venv/bin/python driver.py -d
 ```
 
-### 5. Calibrate pressure
+## Calibrate pressure
 
 1. Hover pen over tablet without touching it and write down `[RAW] Pressure: <-` value
 2. Now, touch tablet as hard as you can and write down `[RAW] Pressure: <-` value again
@@ -70,22 +66,20 @@ sudo venv/bin/python driver.py -d
 7. Stop driver by pressing `CTRL` + `C`
 8. Edit `pressure_threshold_press` and `pressure_threshold_release` in config file if needed
 
-### 6. Start driver in normal mode
+## Start driver in normal mode
 
 ```shell
 sudo venv/bin/python driver.py
 ```
 
-> **NOTE:** You can provide path to config file with `-c [CONFIG]` argument
->
-> **NOTE:** You can enable debug mode in config file itself
->
-> **NOTE:** In case of errors after restarting driver, try reconnecting the tablet or restarting your computer
-  
-### 💻 In case of multiple monitors connected
+**NOTE:** You can provide path to config file with `-c [CONFIG]` argument
+**NOTE:** You can enable debug mode in config file itself
+**NOTE:** In case of errors after restarting driver, try reconnecting the tablet or restarting your computer
+
+## 💻 In case of multiple monitors connected
 
 > Not tested
-  
+
 #### 1. run `xrandr` to identify the name of the Display that you want to limit your tablet x & y coords
 
 *e.g.:*
@@ -179,19 +173,19 @@ At current state of repo, Fern Lane has refactored the code. She fixed the press
 > Some parts of code are taken from:
   <https://github.com/Mantaseus/Huion_Kamvas_Linux>
 >
-> Other parts taken from:  
+> Other parts taken from:
   <https://github.com/alex-s-v/10moons-driver>
 >
 > All inspiration tricks and tactics taken from :
   <https://github.com/DIGImend/10moons-tools>
 >
-> Together with howto videos from DigiMend :  
+> Together with howto videos from DigiMend :
   <https://www.youtube.com/watch?v=WmnSwjlpRBE>
 >
-> DigiMend conference talk on interfacing grahics tablets in Linux:  
+> DigiMend conference talk on interfacing grahics tablets in Linux:
   <https://www.youtube.com/watch?v=Qi73_QFSlpo>
 >
-> The forum that got started with finding a simple solution to cheap graphics tablet purchase:  
+> The forum that got started with finding a simple solution to cheap graphics tablet purchase:
 >
 > "Please Add support for 10moons 10*6 inch Graphics Tablet #182"
   <https://github.com/DIGImend/digimend-kernel-drivers/issues/182>
