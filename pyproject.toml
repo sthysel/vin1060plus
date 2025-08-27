@@ -3,13 +3,15 @@ name = "vin1060plus"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
+    "click>=8.2.1",
     "evdev>=1.7",
+    "loguru>=0.7.3",
     "pyusb>=1.3",
     "pyyaml>=6.0",
 ]
 
 [project.scripts]
-vin1060-driver = "vin1060plus.driver:main"
+vin1060-driver = "vin1060plus.driver:cli"
 
 [build-system]
 requires = ["uv_build>=0.7.19,<0.8.0"]
