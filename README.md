@@ -15,14 +15,14 @@ interface with the tablet device.
 
 # ❓ About
 
-This repository is a driver that provides basic functionality for VINSA 1060plus T501 tablet
+This repository is a driver that provides basic functionality for the VINSA
+1060plus T501 tablet input device.
 
-```
 May also work with other similar models, but not tested yet
 *(for other models you can try modifying config file and make a contribution)*
 
-Tested on 10moons G10 v2.0 (*product code:* `6970607220191`, *detected by* `lsusb` *as:* `08f2:6811`)
-```
+Tested on 10moons G10 v2.0 (*product code:* `6970607220191`, *detected by*
+`lsusb` *as:* `08f2:6811`)
 
 # ✨ Features
 
@@ -34,13 +34,35 @@ Tested on 10moons G10 v2.0 (*product code:* `6970607220191`, *detected by* `lsus
   - Pen (stylus) buttons
   - 12 buttons on the tablet itself
 
-# 🏗️ How to install and use
+# 🏗️ Install and use
 
-```
-⚠️ **You need to connect your tablet and run the driver prior to launching a drawing software otherwise the device will not be recognized by it**
+
+⚠️ **You need to connect your tablet and run the driver prior to launching a
+drawing tool otherwise the device will not be recognised by it**
+
+## Install og github directly
+
+Use this if you just want to use the tool.
+
+```uv tool install  https://github.com/sthysel/vin1060plus.git```
+
+The driver will be installed and added to the path
+
+``` bash
+$ vin1060-driver --help
+Usage: vin1060-driver [OPTIONS]
+
+  VINSA 1060 Plus driver
+
+Options:
+  -c, --config TEXT  Path to config file
+  -d, --debug        Enable debug logs (overrides config)
+  --help             Show this message and exit.
 ```
 
-## Clone this repo
+## Manual Clone this repo
+
+Use this if you want to be more manual about it, or want to play with the code.
 
 ```shell
 git clone https://github.com/sthysel/vin1060plus.git
@@ -51,9 +73,7 @@ uv sync
 
 ## Start driver in debug mode
 
-```shell
-sudo venv/bin/python driver.py -d
-```
+`vin1060-driver -d`
 
 ## Calibrate pressure
 
@@ -68,37 +88,27 @@ sudo venv/bin/python driver.py -d
 
 ## Start driver in normal mode
 
-```shell
-sudo venv/bin/python driver.py
-```
+`vin1060-driver -d`
 
-**NOTE:** You can provide path to config file with `-c [CONFIG]` argument
-**NOTE:** You can enable debug mode in config file itself
-**NOTE:** In case of errors after restarting driver, try reconnecting the tablet or restarting your computer
+You can provide path to config file with `-c [CONFIG]` argument
+You can enable debug mode in config file itself
+In case of errors after restarting driver, try reconnecting the tablet or restarting your computer
 
 ## 💻 In case of multiple monitors connected
 
-> Not tested
-
-#### 1. run `xrandr` to identify the name of the Display that you want to limit your tablet x & y coords
-
-*e.g.:*
+### run `xrandr` to identify the name of the Display that you want to limit your tablet x & y coords
 
 ```text
 DisplayPort-1
 ```
 
-#### 2. run `xinput` to list all virtual devices,  identify the virtual core pointer associated with tablet pen
-
-*e.g.:*
+### run `xinput` to list all virtual devices,  identify the virtual core pointer associated with tablet pen
 
 ```text
 ↳ 10moons-pen Pen (0)                      id=17 [slave  pointer  (2)]
 ```
 
-#### 3. configure xinput to restrict x&y coords to relevant monitor
-
-*e.g.:*
+### configure xinput to restrict x&y coords to relevant monitor
 
 ```shell
 xinput map-to-output 17 DisplayPort-1
@@ -106,15 +116,17 @@ xinput map-to-output 17 DisplayPort-1
 
 ## ⚙️ Configuring tablet
 
-Configuration of the driver placed in `config-vin1060plus.yml` file
+Configuration of the driver placed in `vin1060plus.yml` file
 
 You can provide path to it using `-c` argument
 
-> **Pls read config file with it's comments for more info**
+Read config file with it's comments for more info
 
 ## 🔳 Changing Button/Key shortcuts
 
-`config-vin1060plus.yml` contains a Key code list (`tablet_buttons` variable) that allows the user to edit the 12 buttons found on the left-side of the graphics tablet.
+`vin1060plus.yml` contains a Key code list (`tablet_buttons` variable) that
+allows the user to edit the 12 buttons found on the left-side of the graphics
+tablet.
 
 To list all the possible key codes you may run:
 
@@ -122,7 +134,8 @@ To list all the possible key codes you may run:
 python -c "from evdev import ecodes; print([x for x in dir(ecodes) if 'KEY' in x])"
 ```
 
-`config-vin1060plus.yml` also contains a BTN code list (`pen_buttons` variable) that allows the user to edit the 2 buttons found on passive stylus pen.
+`vin1060plus.yml` also contains a BTN code list (`pen_buttons` variable) that
+allows the user to edit the 2 buttons found on passive stylus pen.
 
 To list all the possible Mouse/Stylus BTN codes you may run:
 
@@ -156,17 +169,41 @@ actions:
 - Started as 10moons-driver by [Alex-S-V](https://github.com/alex-s-v/10moons-driver)
 - Forked by [f-caro](https://github.com/f-caro/10moons-driver-vin1060plus) and modified for `vin1060plus`
 - Refactored by [Fern Lane](https://github.com/F33RNI)
+- Refactored by sthysel
 
-With linux Kernel 5+,  the graphics tablet should be detected but pen movement is restricted to Android Active Area (the small area on the tablet).  That driver was added to the kernel but interacts with the T503 chipset.
-Thanks to [Digimend - https://github.com/DIGImend](https://github.com/DIGImend) for providing valuable functionality not just to 10moons Tablets, but to a variety of other popular Tablets.
+With linux Kernel 5+, the graphics tablet should be detected but pen movement is
+restricted to Android Active Area (the small area on the tablet). That driver
+was added to the kernel but interacts with the T503 chipset. Thanks to
+[Digimend - https://github.com/DIGImend](https://github.com/DIGImend) for
+providing valuable functionality not just to 10moons Tablets, but to a variety
+of other popular Tablets.
 
-Unfortuantely, Mr Digimend has chosen not to further develop the driver applicable to VINSA 1060plus, due to the inaccurate information transmitted between the T501 chipset and the USB driver --> [Live recording of Mr DIGIMEND working on 10moons tablet debug and analysis.  Awesome to see the master at work :)](https://www.youtube.com/watch?v=WmnSwjlpRBE).
+Unfortuantely, Mr Digimend has chosen not to further develop the driver
+applicable to VINSA 1060plus, due to the inaccurate information transmitted
+between the T501 chipset and the USB driver --> [Live recording of Mr DIGIMEND
+working on 10moons tablet debug and analysis. Awesome to see the master at work
+:)](https://www.youtube.com/watch?v=WmnSwjlpRBE).
 
-So an alternative workaround was needed.  In steps Alex-S-V with his pyUSB implementation of the T503 driver --- together with the [Digimend 10moons-Probe tool](https://github.com/DIGImend/10moons-tools),  it has the particular effect of switching the Graphics Tablet out of AndroidActiveArea Mode and into FullTabletArea mode. I will need to ask the original author (Mr.Digimend) how he identified the hex string to transmit to the tablet [ (probe.c src: line#165 ---> SET_REPORT(0x0308, 0x08, 0x04, 0x1d, 0x01, 0xff, 0xff, 0x06, 0x2e); ) ] (<https://github.com/DIGImend/10moons-tools/blob/6cc7c40c50cb58fefe4e732f6a94fac75c9e4859/10moons-probe.c#L165>)
+So an alternative workaround was needed. In steps Alex-S-V with his pyUSB
+implementation of the T503 driver --- together with the [Digimend 10moons-Probe
+tool](https://github.com/DIGImend/10moons-tools), it has the particular effect
+of switching the Graphics Tablet out of AndroidActiveArea Mode and into
+FullTabletArea mode. I will need to ask the original author (Mr.Digimend) how he
+identified the hex string to transmit to the tablet [ (probe.c src: line#165
+---> SET_REPORT(0x0308, 0x08, 0x04, 0x1d, 0x01, 0xff, 0xff, 0x06, 0x2e); ) ]
+(<https://github.com/DIGImend/10moons-tools/blob/6cc7c40c50cb58fefe4e732f6a94fac75c9e4859/10moons-probe.c#L165>)
 
-The person to discover this "hack" was Mr.Digimend himself and thanks to the [Youtube video that he uploaded time-stamp @1:40.11](https://youtu.be/WmnSwjlpRBE?t=6011) he shows that usbhid-dump  output when in Android-Active-Area Mode (8 byte TX)  vs  the required  Full-Tablet-Active-Area mode (64 byte TX).
+The person to discover this "hack" was Mr.Digimend himself and thanks to the
+[Youtube video that he uploaded time-stamp
+@1:40.11](https://youtu.be/WmnSwjlpRBE?t=6011) he shows that usbhid-dump output
+when in Android-Active-Area Mode (8 byte TX) vs the required
+Full-Tablet-Active-Area mode (64 byte TX).
 
-At current state of repo, Fern Lane has refactored the code. She fixed the pressure calculation, moved most of the parameters to a configuration file, making it more universal (with the ability to use it on other similar models), added logs and cli args, made the usage more intuitive, and removed the need for `10moons-tools`.
+At current state of repo, Fern Lane has refactored the code. She fixed the
+pressure calculation, moved most of the parameters to a configuration file,
+making it more universal (with the ability to use it on other similar models),
+added logs and cli args, made the usage more intuitive, and removed the need for
+`10moons-tools`.
 
 ## 🌐 Credits
 
@@ -192,26 +229,45 @@ At current state of repo, Fern Lane has refactored the code. She fixed the press
 
 ## 📑 TODOS
 
-- Map the 10 "virtual buttons" found on the top-side of the graphics tablet active area: (`mute`, `vol_dwn`, `vol_up`, `music_player`, `play_pause`, `prev_song`, `next_song`, `home_btn`, `calc_btn`, `desktop_view`)
+- Map the 10 "virtual buttons" found on the top-side of the graphics tablet
+  active area: (`mute`, `vol_dwn`, `vol_up`, `music_player`, `play_pause`,
+  `prev_song`, `next_song`, `home_btn`, `calc_btn`, `desktop_view`)
 
-- Allow the Graphics App (e.g. Gimp, Scribus, Pix, Inkscape etc. ) to make use of the "pressure sensitivity" measurement
+- Allow the Graphics App (e.g. Gimp, Scribus, Pix, Inkscape etc. ) to make use
+  of the "pressure sensitivity" measurement
 
-- Use its linear Z-axis "pressure sensitivity" measurements and map it to a non-linear function (maybe bezzier-curve) that simulates more natural pen strokes
+- Use its linear Z-axis "pressure sensitivity" measurements and map it to a
+  non-linear function (maybe bezzier-curve) that simulates more natural pen
+  strokes
 
 ## 🔗 Useful references
 
-- Docs to Python source code of UInput class :  <https://python-evdev.readthedocs.io/en/latest/_modules/evdev/uinput.html>
+- Docs to Python source code of UInput class :
+  <https://python-evdev.readthedocs.io/en/latest/_modules/evdev/uinput.html>
 
-- pyUSB tutorial howto : <https://github.com/pyusb/pyusb/blob/master/docs/tutorial.rst>
+- pyUSB tutorial howto :
+  <https://github.com/pyusb/pyusb/blob/master/docs/tutorial.rst>
 
-- wireshark tips on howto filter USB traffic ( [better to use the video from Digimend](https://www.youtube.com/watch?v=WmnSwjlpRBE) ) : <https://osqa-ask.wireshark.org/questions/53919/how-can-i-precisely-specify-a-usb-device-to-capture-with-tshark/>  :::   howto configure in Linux : <https://wiki.wireshark.org/CaptureSetup/USB>  :::  tutorial with step-by-step screenshots : <https://github.com/liquidctl/liquidctl/blob/main/docs/developer/capturing-usb-traffic.md>
+- wireshark tips on howto filter USB traffic ( [better to use the video from
+  Digimend](https://www.youtube.com/watch?v=WmnSwjlpRBE) ) :
+  <https://osqa-ask.wireshark.org/questions/53919/how-can-i-precisely-specify-a-usb-device-to-capture-with-tshark/>
+  ::: howto configure in Linux : <https://wiki.wireshark.org/CaptureSetup/USB>
+  ::: tutorial with step-by-step screenshots :
+  <https://github.com/liquidctl/liquidctl/blob/main/docs/developer/capturing-usb-traffic.md>
 
-- PDF USB.org  Device Class Definition for Human Interface Devices Firmware Specification : <https://www.usb.org/sites/default/files/documents/hid1_11.pdf>
+- PDF USB.org Device Class Definition for Human Interface Devices Firmware
+  Specification :
+  <https://www.usb.org/sites/default/files/documents/hid1_11.pdf>
 
-- Digimend howto do diagnostics when trying out new tablets in Linux : <http://digimend.github.io/support/howto/trbl/diagnostics/>
+- Digimend howto do diagnostics when trying out new tablets in Linux :
+  <http://digimend.github.io/support/howto/trbl/diagnostics/>
 
-- 10moons 10x6 tablet homepage : <http://eng.10moons.com/info5494.html>  :::  picture revealing possible circuit schematic ??  <http://eng.10moons.com/info5494.html>
+- 10moons 10x6 tablet homepage : <http://eng.10moons.com/info5494.html> :::
+  picture revealing possible circuit schematic ??
+  <http://eng.10moons.com/info5494.html>
 
-- libUSB C library initialization/deinitialization : <https://libusb.sourceforge.io/api-1.0/group__libusb__lib.html#details>
+- libUSB C library initialization/deinitialization :
+  <https://libusb.sourceforge.io/api-1.0/group__libusb__lib.html#details>
 
-- USB in a Nutshell - tutorial/howtos/references : <https://www.beyondlogic.org/usbnutshell/usb1.shtml>
+- USB in a Nutshell - tutorial/howtos/references :
+  <https://www.beyondlogic.org/usbnutshell/usb1.shtml>
